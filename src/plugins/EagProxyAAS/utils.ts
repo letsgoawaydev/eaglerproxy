@@ -9,7 +9,6 @@ import { auth, ServerDeviceCodeResponse } from "./auth.js";
 import { config } from "./config.js";
 import { handleCommand } from "./commands.js";
 import { getTokenProfileEasyMc } from "./auth_easymc.js";
-import { EaglerSkins } from "../../proxy/skins/EaglerSkins.js";
 
 const { Vec3 } = vec3 as any;
 const Enums = PLUGIN_MANAGER.Enums;
@@ -425,15 +424,6 @@ export async function onConnect(client: ClientState) {
       sendMessage(
         client.gameClient,
         Enums.ChatColor.BRIGHT_GREEN + "Successfully logged into Minecraft!"
-      );
-      const fetched = await EaglerSkins.downloadSkin(savedAuth.selectedProfile.skins[0].url),
-      processed = await EaglerSkins.toEaglerSkin(fetched);
-      EaglerSkins.writeServerFetchSkinResultCustomPacket(
-        PLUGIN_MANAGER.proxy.players.get(
-          client.gameClient.username
-        ).uuid,
-        processed,
-        true
       );
       client.state = ConnectionState.SUCCESS;
       client.lastStatusUpdate = Date.now();
