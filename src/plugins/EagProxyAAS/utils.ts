@@ -9,6 +9,7 @@ import { auth, ServerDeviceCodeResponse } from "./auth.js";
 import { config } from "./config.js";
 import { handleCommand } from "./commands.js";
 import { getTokenProfileEasyMc } from "./auth_easymc.js";
+import { EaglerSkins } from "../../proxy/skins/EaglerSkins.js";
 
 const { Vec3 } = vec3 as any;
 const Enums = PLUGIN_MANAGER.Enums;
@@ -156,6 +157,30 @@ export function sendMessageWarning(client: Client, msg: string) {
   });
 }
 
+export function sendGitHubWarning(client: Client) {
+  client.write("chat", {
+    message: JSON.stringify({
+      text: "WARNING: You will be prompted to log in via Microsoft to obtain a session token necessary to join games. Any data related to your account will not be saved and for transparency reasons this proxy's source code ",
+      color: "yellow",
+      extra: [
+        { 
+          text: "is available on GitHub.",
+          color: "gold",
+          clickEvent: {
+            action: "open_url",
+            value: "https://github.com/WorldEditAxe/eaglerproxy",
+          },
+          hoverEvent: {
+            action: "show_text",
+            value: Enums.ChatColor.GOLD + "Click to open me in a new window!",
+          },
+        },
+      ]
+    }),
+    position: 1,
+  });
+}
+
 export function sendMessageLogin(client: Client, url: string, token: string) {
   client.write("chat", {
     message: JSON.stringify({
@@ -175,24 +200,9 @@ export function sendMessageLogin(client: Client, url: string, token: string) {
           },
         },
         {
-          text: " and login via the code ",
+          text: " to login.",
         },
-        {
-          text: token,
-          color: "gold",
-          hoverEvent: {
-            action: "show_text",
-            value: Enums.ChatColor.GOLD + "Click me to copy to chat!",
-          },
-          clickEvent: {
-            action: "suggest_command",
-            value: token,
-          },
-        },
-        {
-          text: ".",
-        },
-      ],
+      ]
     }),
     position: 1,
   });
@@ -379,10 +389,7 @@ export async function onConnect(client: ClientState) {
     }
 
     if (chosenOption == ConnectType.ONLINE) {
-      sendMessageWarning(
-        client.gameClient,
-        `WARNING: You will be prompted to log in via Microsoft to obtain a session token necessary to join games. Any data related to your account will not be saved and for transparency reasons this proxy's source code is available on Github.`
-      );
+      sendGitHubWarning(client.gameClient);
       await new Promise((res) => setTimeout(res, 2000));
 
       client.lastStatusUpdate = Date.now();
@@ -398,7 +405,7 @@ export async function onConnect(client: ClientState) {
           );
           sendMessageLogin(
             client.gameClient,
-            code.verification_uri,
+            code.verification_uri+"?otc="+code.user_code,
             code.user_code
           );
         };
@@ -419,7 +426,15 @@ export async function onConnect(client: ClientState) {
         client.gameClient,
         Enums.ChatColor.BRIGHT_GREEN + "Successfully logged into Minecraft!"
       );
-
+      const fetched = await EaglerSkins.downloadSkin(savedAuth.selectedProfile.skins[0].url),
+      processed = await EaglerSkins.toEaglerSkin(fetched);
+      EaglerSkins.writeServerFetchSkinResultCustomPacket(
+        PLUGIN_MANAGER.proxy.players.get(
+          client.gameClient.username
+        ).uuid,
+        processed,
+        true
+      );
       client.state = ConnectionState.SUCCESS;
       client.lastStatusUpdate = Date.now();
       updateState(client.gameClient, "SERVER");
@@ -511,6 +526,7 @@ export async function onConnect(client: ClientState) {
         const player = PLUGIN_MANAGER.proxy.players.get(
           client.gameClient.username
         );
+        logger.info(JSON.stringify(savedAuth));
         player.on("vanillaPacket", (packet, origin) => {
           if (
             origin == "CLIENT" &&
